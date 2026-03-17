@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DRL Traffic Control — City X</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#ffffff;--bg-secondary:#f5f5f3;--bg-tertiary:#eeece6;
+  --text-primary:#1a1a18;--text-secondary:#5f5e5a;--text-tertiary:#888780;
+  --border-light:rgba(0,0,0,0.1);--border-mid:rgba(0,0,0,0.18);
+  --blue:#185FA5;--blue-light:#E6F1FB;--blue-dark:#0C447C;--blue-mid:#B5D4F4;
+  --green:#639922;--green-light:#EAF3DE;--green-dark:#3B6D11;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --gray:#888780;--gray-light:#F1EFE8;
+  --sidebar-w:224px;--topbar-h:54px;
+  --radius-md:8px;--radius-lg:12px;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh}
+
+/* ═══ LOGIN ═══ */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-tertiary)}
+.login-card{background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:var(--radius-lg);padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 4px 28px rgba(0,0,0,0.08)}
+.login-header{text-align:center;margin-bottom:2rem}
+.login-logo{width:52px;height:52px;background:var(--blue);border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.login-title{font-size:19px;font-weight:600;letter-spacing:-0.3px}
+.login-sub{font-size:12px;color:var(--text-tertiary);margin-top:4px}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px}
+.field input{width:100%;padding:10px 12px;font-size:14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);outline:none;transition:border-color .15s,box-shadow .15s}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,0.12)}
+.error-msg{font-size:12px;color:var(--red);background:var(--red-light);border-radius:var(--radius-md);padding:8px 12px;margin-bottom:1rem;display:none;text-align:center}
+.login-btn{width:100%;padding:11px;background:var(--blue);color:#fff;font-size:14px;font-weight:600;border:none;border-radius:var(--radius-md);cursor:pointer;transition:background .15s,transform .1s}
+.login-btn:hover{background:var(--blue-dark)}
+.login-btn:active{transform:scale(0.98)}
+.hint{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:1rem}
+
+/* ═══ APP SHELL ═══ */
+.app{display:none;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--bg-primary);border-right:0.5px solid var(--border-light);
+  display:flex;flex-direction:column;z-index:40
+}
+.sidebar-brand{
+  height:var(--topbar-h);display:flex;align-items:center;gap:10px;
+  padding:0 1.25rem;border-bottom:0.5px solid var(--border-light);flex-shrink:0
+}
+.brand-icon{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-text{}
+.brand-name{font-size:13px;font-weight:600;line-height:1.2}
+.brand-sub{font-size:10px;color:var(--text-tertiary)}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:0.875rem 0.75rem}
+.nav-group-label{
+  font-size:9px;font-weight:700;color:var(--text-tertiary);
+  text-transform:uppercase;letter-spacing:1px;
+  padding:0 0.625rem;margin:1.1rem 0 0.35rem
+}
+.nav-group-label:first-child{margin-top:0}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 10px;border:none;background:none;border-radius:var(--radius-md);
+  font-size:13px;color:var(--text-secondary);font-weight:400;
+  cursor:pointer;text-align:left;transition:background .12s,color .12s;
+  position:relative
+}
+.nav-btn:hover{background:var(--bg-secondary);color:var(--text-primary)}
+.nav-btn.active{background:var(--blue-light);color:var(--blue);font-weight:500}
+.nav-btn .icon{
+  width:17px;height:17px;flex-shrink:0;
+  stroke:var(--text-tertiary);fill:none;
+  stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke .12s
+}
+.nav-btn:hover .icon{stroke:var(--text-primary)}
+.nav-btn.active .icon{stroke:var(--blue)}
+.nav-pill{
+  margin-left:auto;font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:20px;
+  background:var(--blue-light);color:var(--blue)
+}
+
+.sidebar-foot{padding:0.75rem;border-top:0.5px solid var(--border-light);flex-shrink:0}
+.user-row{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--radius-md)}
+.u-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blue-dark);flex-shrink:0}
+.u-name{font-size:12px;font-weight:500;color:var(--text-primary)}
+.u-role{font-size:10px;color:var(--text-tertiary);margin-top:1px}
+
+/* ── Topbar ── */
+.topbar{
+  position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--topbar-h);
+  background:var(--bg-primary);border-bottom:0.5px solid var(--border-light);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 1.5rem;z-index:30
+}
+.tb-left{display:flex;align-items:center;gap:10px}
+.tb-title{font-size:14px;font-weight:600}
+.tb-badge{font-size:10px;background:var(--blue-light);color:var(--blue-dark);padding:2px 9px;border-radius:20px;font-weight:500}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blue-dark)}
+.tb-user{font-size:13px;color:var(--text-secondary)}
+.signout-btn{font-size:12px;font-weight:500;color:var(--text-secondary);background:none;border:0.5px solid var(--border-mid);padding:6px 14px;border-radius:var(--radius-md);cursor:pointer;transition:all .15s}
+.signout-btn:hover{background:var(--red-light);color:var(--red);border-color:rgba(163,45,45,.35)}
+
+/* ── Pages ── */
+.content{margin-left:var(--sidebar-w);padding-top:var(--topbar-h);min-height:100vh;background:var(--bg-tertiary)}
+.page{display:none;padding:1.5rem;max-width:1020px;margin:0 auto}
+.page.active{display:block}
+.page-hd{margin-bottom:1.5rem}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-0.3px}
+.page-sub{font-size:13px;color:var(--text-secondary);margin-top:3px}
+.sec-label{font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.9px;margin:1.5rem 0 .75rem}
+.sec-label:first-child{margin-top:0}
+
+/* Cards / grid helpers */
+.card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1.1rem 1.25rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.span-2{grid-column:1/-1}
+
+/* KPI */
+.kpi-label{font-size:11px;color:var(--text-secondary);font-weight:500;margin-bottom:6px}
+.kpi-row{display:flex;align-items:baseline;gap:8px}
+.kpi-val{font-size:26px;font-weight:600;color:var(--blue)}
+.kpi-delta{font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500}
+.d-good{background:var(--green-light);color:var(--green-dark)}
+.d-bad{background:var(--red-light);color:var(--red)}
+.kpi-sub{font-size:10px;color:var(--text-tertiary);margin-top:5px}
+
+/* Bar comparison */
+.cmp-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cmp-title{font-size:13px;font-weight:500}
+.tag-row{display:flex;gap:6px}
+.tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.tag-gray{background:var(--gray-light);color:var(--gray)}
+.tag-blue{background:var(--blue-light);color:var(--blue)}
+.bar-blk{margin-bottom:10px}
+.bar-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-bottom:5px}
+.bar-track{height:8px;background:var(--bg-secondary);border-radius:4px;overflow:hidden}
+.bar-track+.bar-track{margin-top:4px}
+.bf{height:100%;border-radius:4px}
+.bf-gray{background:var(--gray)}
+.bf-blue{background:var(--blue)}
+
+/* Status dots */
+.status-row-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.status-card{display:flex;align-items:center;gap:12px}
+.sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sdot-green{background:var(--green);animation:blink 2s infinite}
+.sdot-blue{background:var(--blue)}
+.sdot-amber{background:var(--amber)}
+.sname{font-size:12px;font-weight:500}
+.sval{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+/* Signal phases */
+.phase-card{text-align:center}
+.ph-label{font-size:10px;color:var(--text-tertiary);font-weight:500;margin-bottom:8px}
+.ph-light{width:26px;height:26px;border-radius:50%;margin:0 auto 8px}
+.ph-green{background:var(--green);box-shadow:0 0 8px rgba(99,153,34,.45)}
+.ph-red{background:var(--red)}
+.ph-amber{background:var(--amber);box-shadow:0 0 8px rgba(186,117,23,.45)}
+.ph-time{font-size:22px;font-weight:600}
+.ph-unit{font-size:10px;color:var(--text-tertiary);margin-top:2px}
+
+/* Model config */
+.cfg-row{display:flex;flex-wrap:wrap;gap:20px}
+.cfg-item{display:flex;flex-direction:column;gap:3px}
+.cfg-lbl{font-size:10px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.cfg-val{font-size:13px;font-weight:500}
+.cfg-badge{font-size:10px;padding:3px 9px;border-radius:20px;background:var(--blue-light);color:var(--blue);font-weight:600}
+
+/* ── Simulation Control ── */
+.ctrl-title{font-size:13px;font-weight:500;margin-bottom:14px}
+.sl-row{margin-bottom:14px}
+.sl-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-bottom:5px}
+.sl-meta span:last-child{font-weight:600;color:var(--text-primary)}
+input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
+.btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btn-p{padding:8px 16px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;border:none;border-radius:var(--radius-md);cursor:pointer;transition:background .15s}
+.btn-p:hover{background:var(--blue-dark)}
+.btn-s{padding:8px 16px;background:none;color:var(--text-secondary);font-size:12px;font-weight:500;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);cursor:pointer;transition:background .15s}
+.btn-s:hover{background:var(--bg-secondary)}
+.btn-d{padding:8px 16px;background:none;color:var(--red);font-size:12px;font-weight:500;border:0.5px solid rgba(163,45,45,.3);border-radius:var(--radius-md);cursor:pointer;transition:background .15s}
+.btn-d:hover{background:var(--red-light)}
+.log-box{background:#111;border-radius:var(--radius-md);padding:.75rem 1rem;font-family:'Courier New',monospace;font-size:11px;color:#97c459;line-height:1.75;max-height:150px;overflow-y:auto}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--border-light)}
+.tog-row:last-child{border-bottom:none}
+.tog-lbl{font-size:12px;font-weight:500}
+.tog-sub{font-size:10px;color:var(--text-tertiary);margin-top:1px}
+.toggle{position:relative;width:34px;height:18px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;inset:0;background:var(--border-mid);border-radius:20px;cursor:pointer;transition:background .2s}
+.tog-sl::before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle input:checked+.tog-sl{background:var(--blue)}
+.toggle input:checked+.tog-sl::before{transform:translateX(16px)}
+
+/* ── Reports ── */
+.rpt-title{font-size:13px;font-weight:500;margin-bottom:12px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;padding:0 8px 8px 0;text-align:left;border-bottom:0.5px solid var(--border-light)}
+.tbl td{font-size:12px;padding:8px 8px 8px 0;border-bottom:0.5px solid var(--border-light)}
+.tbl tr:last-child td{border-bottom:none}
+.tc-blue{color:var(--blue);font-weight:500}
+.tc-green{color:var(--green-dark);font-weight:500}
+.tc-red{color:var(--red);font-weight:500}
+.mb-wrap{display:flex;align-items:center;gap:8px}
+.mb-track{flex:1;height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden}
+.mb-fill{height:100%;border-radius:3px;background:var(--blue)}
+.ep-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border-light)}
+.ep-row:last-child{border-bottom:none}
+.ep-num{font-size:11px;color:var(--text-tertiary);font-family:'Courier New',monospace;min-width:44px}
+.ep-track{flex:1;height:4px;background:var(--bg-secondary);border-radius:2px;overflow:hidden}
+.ep-fill{height:100%;border-radius:2px;background:var(--blue)}
+.ep-val{font-size:11px;min-width:50px;text-align:right}
+
+/* ── Settings ── */
+.set-title{font-size:13px;font-weight:500;margin-bottom:14px}
+.set-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border-light)}
+.set-row:last-child{border-bottom:none}
+.set-info{flex:1}
+.set-lbl{font-size:12px;font-weight:500}
+.set-desc{font-size:10px;color:var(--text-tertiary);margin-top:2px}
+.set-select{font-size:12px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);padding:5px 8px;background:var(--bg-secondary);color:var(--text-primary);outline:none;cursor:pointer}
+.prof-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.prof-av{width:44px;height:44px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--blue-dark)}
+.prof-name{font-size:14px;font-weight:600}
+.prof-role{font-size:11px;color:var(--text-tertiary);margin-top:2px}
+.tog-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 2rem}
+
+/* ── Logged Out ── */
+.logout-screen{display:none;min-height:100vh;background:var(--bg-tertiary);align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.lo-icon{width:56px;height:56px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.lo-title{font-size:18px;font-weight:600}
+.lo-sub{font-size:13px;color:var(--text-secondary)}
+.lo-btn{padding:9px 22px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:var(--radius-md);cursor:pointer;margin-top:.5rem;transition:background .15s}
+.lo-btn:hover{background:var(--blue-dark)}
+
+@media(max-width:700px){
+  :root{--sidebar-w:0px}
+  .sidebar{display:none}
+  .topbar{left:0}
+  .grid-3,.grid-2,.status-row-grid,.tog-2col{grid-template-columns:1fr}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="login-title">DRL Traffic Control</div>
+      <div class="login-sub">City X — Kapuas Bridge Intersection System</div>
+    </div>
+    <div class="field">
+      <label for="uname">Username</label>
+      <input type="text" id="uname" placeholder="Enter username" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label for="pwd">Password</label>
+      <input type="password" id="pwd" placeholder="Enter password"/>
+    </div>
+    <div class="error-msg" id="errMsg">Invalid credentials. Please try again.</div>
+    <button class="login-btn" id="loginBtn">Sign In</button>
+    <div class="hint">Demo &nbsp;·&nbsp; admin / traffic123</div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">DRL Traffic</div>
+        <div class="brand-sub">City X Control System</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">Main</div>
+
+      <!-- Dashboard -->
+      <button class="nav-btn active" data-page="pgDashboard" data-title="Dashboard">
+        <svg class="icon" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Dashboard
+      </button>
+
+      <!-- Simulation Control -->
+      <button class="nav-btn" data-page="pgSimulation" data-title="Simulation Control">
+        <svg class="icon" viewBox="0 0 24 24">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Simulation Control
+        <span class="nav-pill">Live</span>
+      </button>
+
+      <div class="nav-group-label">Analysis</div>
+
+      <!-- Reports & Analytics -->
+      <button class="nav-btn" data-page="pgReports" data-title="Reports &amp; Analytics">
+        <svg class="icon" viewBox="0 0 24 24">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6"  y1="20" x2="6"  y2="14"/>
+        </svg>
+        Reports &amp; Analytics
+      </button>
+
+      <div class="nav-group-label">System</div>
+
+      <!-- Settings -->
+      <button class="nav-btn" data-page="pgSettings" data-title="Settings">
+        <svg class="icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-row">
+        <div class="u-avatar" id="sideAvatar">AD</div>
+        <div>
+          <div class="u-name" id="sideName">admin</div>
+          <div class="u-role">Traffic Operator</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-title" id="tbTitle">Dashboard</div>
+      <div class="tb-badge"><span class="live-dot"></span>Live Simulation</div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-avatar" id="tbAvatar">AD</div>
+      <span class="tb-user" id="tbUser">admin</span>
+      <button class="signout-btn" id="signOutBtn">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── PAGE: Dashboard ── -->
+    <div class="page active" id="pgDashboard">
+      <div class="page-hd">
+        <div class="page-title">Overview</div>
+        <div class="page-sub">Kapuas Bridge intersection — DRL vs fixed-time baseline (ICAIFI 2025)</div>
+      </div>
+
+      <div class="sec-label">Key Performance Indicators</div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="kpi-label">Average Delay Time</div>
+          <div class="kpi-row"><span class="kpi-val">82.8s</span><span class="kpi-delta d-good">↓ 28%</span></div>
+          <div class="kpi-sub">vs 115.0s with fixed-time control</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Max Queue Length</div>
+          <div class="kpi-row"><span class="kpi-val">35.75</span><span class="kpi-delta d-good">↓ 35%</span></div>
+          <div class="kpi-sub">vehicles &nbsp;·&nbsp; was 55.0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Vehicle Throughput</div>
+          <div class="kpi-row"><span class="kpi-val">1,829</span><span class="kpi-delta d-good">↑ 18%</span></div>
+          <div class="kpi-sub">veh/hr &nbsp;·&nbsp; was 1,550</div>
+        </div>
+      </div>
+
+      <div class="sec-label">Metric Comparison</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="cmp-hd">
+            <div class="cmp-title">Delay &amp; Queue Reduction</div>
+            <div class="tag-row"><span class="tag tag-gray">Fixed-Time</span><span class="tag tag-blue">DRL</span></div>
+          </div>
+          <div class="bar-blk">
+            <div class="bar-meta"><span>Avg Delay (s)</span><span>115 → 82.8</span></div>
+            <div class="bar-track"><div class="bf bf-gray" style="width:100%"></div></div>
+            <div class="bar-track"><div class="bf bf-blue" style="width:72%"></div></div>
+          </div>
+          <div class="bar-blk" style="margin-top:12px">
+            <div class="bar-meta"><span>Max Queue (veh)</span><span>55 → 35.75</span></div>
+            <div class="bar-track"><div class="bf bf-gray" style="width:100%"></div></div>
+            <div class="bar-track"><div class="bf bf-blue" style="width:65%"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="cmp-hd">
+            <div class="cmp-title">Throughput (veh/hr)</div>
+            <div class="tag-row"><span class="tag tag-gray">Fixed-Time</span><span class="tag tag-blue">DRL</span></div>
+          </div>
+          <div class="bar-blk">
+            <div class="bar-meta"><span>Fixed-Time</span><span>1,550</span></div>
+            <div class="bar-track"><div class="bf bf-gray" style="width:85%"></div></div>
+          </div>
+          <div class="bar-blk" style="margin-top:12px">
+            <div class="bar-meta"><span>DRL Model</span><span>1,829</span></div>
+            <div class="bar-track"><div class="bf bf-blue" style="width:100%"></div></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:10px">+279 additional vehicles served per hour</div>
+        </div>
+      </div>
+
+      <div class="sec-label">Intersection Status — Kapuas Bridge</div>
+      <div class="status-row-grid">
+        <div class="card status-card"><div class="sdot sdot-green"></div><div><div class="sname">DRL Agent</div><div class="sval">Active · DQN policy running</div></div></div>
+        <div class="card status-card"><div class="sdot sdot-blue"></div><div><div class="sname">CityFlow Simulator</div><div class="sval">Running · Episode 412</div></div></div>
+        <div class="card status-card"><div class="sdot sdot-amber"></div><div><div class="sname">Traffic Density</div><div class="sval">Peak hour — high load</div></div></div>
+      </div>
+
+      <div class="sec-label">Current Signal Phase Timings</div>
+      <div class="grid-4">
+        <div class="card phase-card"><div class="ph-label">North–South</div><div class="ph-light ph-green"></div><div class="ph-time">42</div><div class="ph-unit">seconds</div></div>
+        <div class="card phase-card"><div class="ph-label">East–West</div><div class="ph-light ph-red"></div><div class="ph-time">28</div><div class="ph-unit">seconds</div></div>
+        <div class="card phase-card"><div class="ph-label">Left-Turn</div><div class="ph-light ph-amber"></div><div class="ph-time">14</div><div class="ph-unit">seconds</div></div>
+        <div class="card phase-card"><div class="ph-label">Pedestrian</div><div class="ph-light ph-red"></div><div class="ph-time">16</div><div class="ph-unit">seconds</div></div>
+      </div>
+
+      <div class="sec-label">Model Configuration</div>
+      <div class="card">
+        <div class="cfg-row">
+          <div class="cfg-item"><span class="cfg-lbl">Algorithm</span><span class="cfg-val">Deep Q-Network (DQN)</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">Simulator</span><span class="cfg-val">CityFlow</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">State</span><span class="cfg-val">Queue lengths, wait times</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">Reward</span><span class="cfg-val">–Σ vehicle waiting time</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">Action</span><span class="cfg-val">Select next green phase</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">Variant</span><span class="cfg-badge">Double DQN Ready</span></div>
+          <div class="cfg-item"><span class="cfg-lbl">Location</span><span class="cfg-val">Pontianak, West Kalimantan</span></div>
+        </div>
+      </div>
+    </div><!-- /pgDashboard -->
+
+    <!-- ── PAGE: Simulation Control ── -->
+    <div class="page" id="pgSimulation">
+      <div class="page-hd">
+        <div class="page-title">Simulation Control</div>
+        <div class="page-sub">Adjust DRL agent parameters and manage training sessions</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="ctrl-title">Training Parameters</div>
+          <div class="sl-row">
+            <div class="sl-meta"><span>Learning Rate (α)</span><span id="lrVal">0.001</span></div>
+            <input type="range" min="1" max="100" value="10" oninput="document.getElementById('lrVal').textContent='0.00'+this.value"/>
+          </div>
+          <div class="sl-row">
+            <div class="sl-meta"><span>Discount Factor (γ)</span><span id="gammaVal">0.95</span></div>
+            <input type="range" min="80" max="99" value="95" oninput="document.getElementById('gammaVal').textContent='0.'+this.value"/>
+          </div>
+          <div class="sl-row">
+            <div class="sl-meta"><span>Exploration (ε)</span><span id="epsVal">0.10</span></div>
+            <input type="range" min="1" max="50" value="10" oninput="document.getElementById('epsVal').textContent='0.'+(this.value<10?'0':'')+this.value"/>
+          </div>
+          <div class="sl-row">
+            <div class="sl-meta"><span>Replay Buffer Size</span><span id="bufVal">5,000</span></div>
+            <input type="range" min="1000" max="20000" step="1000" value="5000" oninput="document.getElementById('bufVal').textContent=parseInt(this.value).toLocaleString()"/>
+          </div>
+          <div class="btn-row">
+            <button class="btn-p" onclick="addLog('Training started — episode 413')">▶ Start</button>
+            <button class="btn-s" onclick="addLog('Training paused')">⏸ Pause</button>
+            <button class="btn-d" onclick="addLog('Training reset to episode 0')">↺ Reset</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ctrl-title">Simulation Options</div>
+          <div class="tog-row"><div><div class="tog-lbl">Double DQN</div><div class="tog-sub">Target + policy networks</div></div><label class="toggle"><input type="checkbox" checked/><span class="tog-sl"></span></label></div>
+          <div class="tog-row"><div><div class="tog-lbl">Dueling DQN</div><div class="tog-sub">Separate value / advantage streams</div></div><label class="toggle"><input type="checkbox"/><span class="tog-sl"></span></label></div>
+          <div class="tog-row"><div><div class="tog-lbl">Prioritized Replay</div><div class="tog-sub">Weight important transitions</div></div><label class="toggle"><input type="checkbox"/><span class="tog-sl"></span></label></div>
+          <div class="tog-row"><div><div class="tog-lbl">Motorcycle Feature</div><div class="tog-sub">Separate state for 2-wheelers</div></div><label class="toggle"><input type="checkbox" checked/><span class="tog-sl"></span></label></div>
+          <div class="tog-row"><div><div class="tog-lbl">Auto-Save Checkpoints</div><div class="tog-sub">Save every 50 episodes</div></div><label class="toggle"><input type="checkbox" checked/><span class="tog-sl"></span></label></div>
+        </div>
+
+        <div class="card span-2">
+          <div class="ctrl-title">Simulation Log</div>
+          <div class="log-box" id="simLog">
+[00:00:01] System initialised — CityFlow v1.0<br>
+[00:00:03] DQN agent loaded — 3 hidden layers, 64 units<br>
+[00:00:05] Traffic data loaded — Kapuas Bridge peak hour<br>
+[00:00:08] Episode 410 complete — avg reward: -82.4<br>
+[00:00:11] Episode 411 complete — avg reward: -80.1<br>
+[00:00:14] Episode 412 complete — avg reward: -78.9 ✓ best
+          </div>
+        </div>
+      </div>
+    </div><!-- /pgSimulation -->
+
+    <!-- ── PAGE: Reports & Analytics ── -->
+    <div class="page" id="pgReports">
+      <div class="page-hd">
+        <div class="page-title">Reports &amp; Analytics</div>
+        <div class="page-sub">Full performance breakdown and DQN training history</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="rpt-title">Full Metric Comparison</div>
+          <table class="tbl">
+            <thead><tr><th>Metric</th><th>Fixed-Time</th><th>DRL</th><th>Change</th></tr></thead>
+            <tbody>
+              <tr><td>Avg Delay (s)</td><td class="tc-red">115.0</td><td class="tc-blue">82.8</td><td class="tc-green">↓ 28%</td></tr>
+              <tr><td>Max Queue (veh)</td><td class="tc-red">55.0</td><td class="tc-blue">35.75</td><td class="tc-green">↓ 35%</td></tr>
+              <tr><td>Throughput (veh/hr)</td><td class="tc-red">1,550</td><td class="tc-blue">1,829</td><td class="tc-green">↑ 18%</td></tr>
+              <tr><td>Est. CO₂ reduction</td><td>—</td><td class="tc-blue">~25%</td><td class="tc-green">Wei et al.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="rpt-title">Queue by Lane</div>
+          <table class="tbl">
+            <thead><tr><th>Lane</th><th>Queue (veh)</th><th>Distribution</th></tr></thead>
+            <tbody>
+              <tr><td>North–South</td><td class="tc-blue">8.2</td><td><div class="mb-wrap"><div class="mb-track"><div class="mb-fill" style="width:82%"></div></div><span style="font-size:10px;color:var(--text-tertiary)">82%</span></div></td></tr>
+              <tr><td>East–West</td><td class="tc-blue">12.5</td><td><div class="mb-wrap"><div class="mb-track"><div class="mb-fill" style="width:100%"></div></div><span style="font-size:10px;color:var(--text-tertiary)">100%</span></div></td></tr>
+              <tr><td>Left-Turn</td><td class="tc-blue">5.1</td><td><div class="mb-wrap"><div class="mb-track"><div class="mb-fill" style="width:51%"></div></div><span style="font-size:10px;color:var(--text-tertiary)">51%</span></div></td></tr>
+              <tr><td>Pedestrian</td><td class="tc-blue">9.95</td><td><div class="mb-wrap"><div class="mb-track"><div class="mb-fill" style="width:80%"></div></div><span style="font-size:10px;color:var(--text-tertiary)">80%</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card span-2">
+          <div class="rpt-title">Training History — Last 10 Episodes</div>
+          <div>
+            <div class="ep-row"><span class="ep-num">EP 403</span><div class="ep-track"><div class="ep-fill" style="width:55%"></div></div><span class="ep-val" style="color:var(--text-tertiary)">–94.2</span></div>
+            <div class="ep-row"><span class="ep-num">EP 404</span><div class="ep-track"><div class="ep-fill" style="width:59%"></div></div><span class="ep-val" style="color:var(--text-tertiary)">–91.8</span></div>
+            <div class="ep-row"><span class="ep-num">EP 405</span><div class="ep-track"><div class="ep-fill" style="width:63%"></div></div><span class="ep-val" style="color:var(--text-tertiary)">–89.3</span></div>
+            <div class="ep-row"><span class="ep-num">EP 406</span><div class="ep-track"><div class="ep-fill" style="width:68%"></div></div><span class="ep-val" style="color:var(--text-secondary)">–87.1</span></div>
+            <div class="ep-row"><span class="ep-num">EP 407</span><div class="ep-track"><div class="ep-fill" style="width:72%"></div></div><span class="ep-val" style="color:var(--text-secondary)">–85.6</span></div>
+            <div class="ep-row"><span class="ep-num">EP 408</span><div class="ep-track"><div class="ep-fill" style="width:76%"></div></div><span class="ep-val" style="color:var(--text-secondary)">–84.0</span></div>
+            <div class="ep-row"><span class="ep-num">EP 409</span><div class="ep-track"><div class="ep-fill" style="width:81%"></div></div><span class="ep-val" style="color:var(--text-primary)">–82.9</span></div>
+            <div class="ep-row"><span class="ep-num">EP 410</span><div class="ep-track"><div class="ep-fill" style="width:85%"></div></div><span class="ep-val" style="color:var(--text-primary)">–82.4</span></div>
+            <div class="ep-row"><span class="ep-num">EP 411</span><div class="ep-track"><div class="ep-fill" style="width:92%"></div></div><span class="ep-val" style="color:var(--blue)">–80.1</span></div>
+            <div class="ep-row"><span class="ep-num">EP 412</span><div class="ep-track"><div class="ep-fill" style="width:100%"></div></div><span class="ep-val" style="color:var(--green-dark)">–78.9 ✓</span></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /pgReports -->
+
+    <!-- ── PAGE: Settings ── -->
+    <div class="page" id="pgSettings">
+      <div class="page-hd">
+        <div class="page-title">Settings</div>
+        <div class="page-sub">System preferences and user configuration</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="set-title">Profile</div>
+          <div class="prof-row">
+            <div class="prof-av" id="settingsAvatar">AD</div>
+            <div>
+              <div class="prof-name" id="settingsName">admin</div>
+              <div class="prof-role">Traffic Operator — City X</div>
+            </div>
+          </div>
+          <div class="set-row"><div class="set-info"><div class="set-lbl">Institution</div><div class="set-desc">Universitas Bina Nusantara</div></div></div>
+          <div class="set-row"><div class="set-info"><div class="set-lbl">Project</div><div class="set-desc">DRL Traffic Signal — ICAIFI 2025</div></div></div>
+          <div class="set-row">
+            <div class="set-info"><div class="set-lbl">Session Timeout</div><div class="set-desc">Auto sign-out after inactivity</div></div>
+            <select class="set-select"><option>30 min</option><option>1 hour</option><option>Never</option></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="set-title">Simulation Defaults</div>
+          <div class="set-row">
+            <div class="set-info"><div class="set-lbl">Simulator</div><div class="set-desc">Traffic simulation platform</div></div>
+            <select class="set-select"><option>CityFlow</option><option>SUMO</option><option>PTV Vissim</option></select>
+          </div>
+          <div class="set-row">
+            <div class="set-info"><div class="set-lbl">RL Algorithm</div><div class="set-desc">Base learning algorithm</div></div>
+            <select class="set-select"><option>DQN</option><option>Double DQN</option><option>Dueling DQN</option></select>
+          </div>
+          <div class="set-row">
+            <div class="set-info"><div class="set-lbl">Intersection</div><div class="set-desc">Target location</div></div>
+            <select class="set-select"><option>Kapuas Bridge</option><option>Custom</option></select>
+          </div>
+          <div class="set-row">
+            <div class="set-info"><div class="set-lbl">Traffic Mode</div><div class="set-desc">Vehicle composition</div></div>
+            <select class="set-select"><option>Mixed (cars + motorcycles)</option><option>Cars only</option></select>
+          </div>
+        </div>
+
+        <div class="card span-2">
+          <div class="set-title">Notifications &amp; Logging</div>
+          <div class="tog-2col">
+            <div class="tog-row"><div><div class="tog-lbl">Episode complete alerts</div><div class="tog-sub">Notify on each episode end</div></div><label class="toggle"><input type="checkbox" checked/><span class="tog-sl"></span></label></div>
+            <div class="tog-row"><div><div class="tog-lbl">Best model alert</div><div class="tog-sub">Notify when new best reward found</div></div><label class="toggle"><input type="checkbox" checked/><span class="tog-sl"></span></label></div>
+            <div class="tog-row"><div><div class="tog-lbl">Export logs as CSV</div><div class="tog-sub">Auto-export every 100 episodes</div></div><label class="toggle"><input type="checkbox"/><span class="tog-sl"></span></label></div>
+            <div class="tog-row"><div><div class="tog-lbl">Verbose simulation log</div><div class="tog-sub">Show step-by-step actions</div></div><label class="toggle"><input type="checkbox"/><span class="tog-sl"></span></label></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /pgSettings -->
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- ═══ LOGGED OUT ═══ -->
+<div class="logout-screen" id="logoutScreen">
+  <div class="lo-icon">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3B6D11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  </div>
+  <div class="lo-title">You've been signed out</div>
+  <div class="lo-sub">Session ended · DRL simulation paused</div>
+  <button class="lo-btn" id="backBtn">Sign In Again</button>
+</div>
+
+<script>
+  const USERS = { admin:'traffic123', operator:'kapuas2025' };
+  const PAGE_TITLES = { pgDashboard:'Dashboard', pgSimulation:'Simulation Control', pgReports:'Reports & Analytics', pgSettings:'Settings' };
+
+  function showScreen(id){
+    document.getElementById('loginScreen').style.display  = id==='login'  ? 'flex'  : 'none';
+    document.getElementById('app').style.display          = id==='app'    ? 'block' : 'none';
+    document.getElementById('logoutScreen').style.display = id==='logout' ? 'flex'  : 'none';
+  }
+
+  function setUser(u){
+    const ini = u.substring(0,2).toUpperCase();
+    ['sideAvatar','tbAvatar','settingsAvatar'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=ini; });
+    ['sideName','tbUser','settingsName'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=u; });
+  }
+
+  function navigate(pageId){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.page===pageId));
+    document.getElementById('tbTitle').textContent = PAGE_TITLES[pageId]||'';
+  }
+
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>navigate(btn.dataset.page));
+  });
+
+  document.getElementById('loginBtn').addEventListener('click',()=>{
+    const u=document.getElementById('uname').value.trim();
+    const p=document.getElementById('pwd').value;
+    const err=document.getElementById('errMsg');
+    if(USERS[u]&&USERS[u]===p){
+      err.style.display='none';
+      setUser(u);
+      showScreen('app');
+      navigate('pgDashboard');
+    } else {
+      err.style.display='block';
+    }
+  });
+
+  document.getElementById('pwd').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+  document.getElementById('signOutBtn').addEventListener('click',()=>{ document.getElementById('uname').value=''; document.getElementById('pwd').value=''; showScreen('logout'); });
+  document.getElementById('backBtn').addEventListener('click',()=>showScreen('login'));
+
+  function addLog(msg){
+    const log=document.getElementById('simLog');
+    const now=new Date();
+    const ts=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    log.innerHTML+=`<br>[${ts}] ${msg}`;
+    log.scrollTop=log.scrollHeight;
+  }
+
+  showScreen('login');
+</script>
+</body>
+</html>
